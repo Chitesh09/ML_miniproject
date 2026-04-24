@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { X, BookOpen, Plus, Check, ThumbsUp, ThumbsDown, Sparkles, Clock, Compass } from 'lucide-react';
+import { X, BookOpen, Plus, Check, ThumbsUp, ThumbsDown, Sparkles, Clock, Compass, ExternalLink } from 'lucide-react';
 import CarouselRow from './CarouselRow';
 import { useRouter } from 'next/navigation';
 
@@ -91,7 +91,10 @@ export default function BookDetailModal() {
             <h2 className="text-3xl md:text-5xl font-extrabold mb-4 text-shadow-book text-white line-clamp-2">{selectedBook.title}</h2>
             <div className="flex gap-4">
               <button onClick={handleReadClick} className="flex items-center gap-2 bg-book-amber text-white px-6 py-2 rounded font-bold hover:bg-amber-600 transition shadow-lg">
-                <BookOpen fill="currentColor" className="w-5 h-5" /> Read
+                <BookOpen fill="currentColor" className="w-5 h-5" /> Details
+              </button>
+              <button onClick={() => window.open(`https://books.google.com/books?q=${encodeURIComponent(selectedBook.title + ' ' + selectedBook.author)}`, '_blank')} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-500 transition shadow-lg">
+                <ExternalLink className="w-5 h-5" /> Read Online
               </button>
               <button onClick={handleToggleWishlist} className="w-10 h-10 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition bg-book-dark shadow" title="Add to My List">
                 {isFav ? <Check className="w-5 h-5 text-green-400" /> : <Plus className="w-5 h-5" />}

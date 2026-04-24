@@ -110,4 +110,11 @@ async def get_recommendations(req: RecommendationRequest, background_tasks: Back
 async def get_books(limit: int = 50):
     if recommender.books is None:
         return []
-    return recommender.books.head(limit).to_dict(orient='records')
+    return recommender.books.head(limit).fillna("").to_dict(orient='records')
+
+@app.get("/api/books/{book_id}")
+async def get_book_by_id(book_id: int):
+    details = recommender.get_book_details(book_id)
+    if not details:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return details

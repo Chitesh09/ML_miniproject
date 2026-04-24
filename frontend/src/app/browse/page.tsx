@@ -70,7 +70,7 @@ export default function BrowsePage() {
         <HeroBanner book={books[0]} /> // Feature the first popular book
       )}
 
-      <div className="relative z-20 -mt-24 md:-mt-32">
+      <div className="relative z-20 mt-8 md:mt-12">
         {loading ? (
           <>
             <RowSkeleton />

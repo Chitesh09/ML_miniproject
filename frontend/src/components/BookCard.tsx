@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { BookOpen, Plus, Check, ChevronDown } from 'lucide-react';
+import { BookOpen, Plus, Check, ChevronDown, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface BookCardProps {
@@ -64,13 +64,16 @@ export default function BookCard({ book, recommendationExplanation, confidenceSc
       {isHovered && (
         <div className="absolute top-0 left-0 w-full h-full bg-book-card text-white rounded-md shadow-2xl p-3 flex flex-col justify-end transition-opacity duration-300 z-30 opacity-100 bg-gradient-to-t from-book-dark via-book-dark/90 to-transparent">
           <div className="flex gap-2 mb-2 items-center">
-            <button onClick={handlePlayClick} className="w-8 h-8 bg-book-amber text-white rounded-full flex items-center justify-center hover:bg-amber-600 transition shadow">
+            <button onClick={handlePlayClick} className="w-8 h-8 bg-book-amber text-white rounded-full flex items-center justify-center hover:bg-amber-600 transition shadow" title="Details">
               <BookOpen fill="currentColor" className="w-4 h-4" />
             </button>
-            <button onClick={handleToggleWishlist} className="w-8 h-8 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition shadow">
+            <button onClick={(e) => { e.stopPropagation(); window.open(`https://books.google.com/books?q=${encodeURIComponent(book.title + ' ' + book.author)}`, '_blank'); }} className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center hover:bg-indigo-500 transition shadow" title="Read Online">
+              <ExternalLink className="w-4 h-4" />
+            </button>
+            <button onClick={handleToggleWishlist} className="w-8 h-8 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition shadow" title="Add to List">
               {isFav ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             </button>
-            <button className="w-8 h-8 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition shadow ml-auto">
+            <button className="w-8 h-8 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition shadow ml-auto" title="More Info">
               <ChevronDown className="w-4 h-4" />
             </button>
           </div>

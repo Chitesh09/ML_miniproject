@@ -63,7 +63,7 @@ class HybridRecommender:
         book = self.books[self.books['book_id'] == book_id]
         if book.empty:
             return None
-        return book.iloc[0].to_dict()
+        return book.fillna("").iloc[0].to_dict()
 
     def collaborative_filtering(self, book_id, k=10):
         if book_id not in self.book_ids:
@@ -226,9 +226,10 @@ class HybridRecommender:
             return []
         q = query.lower()
         mask = self.books['title'].str.lower().str.contains(q, na=False) | \
-               self.books['author'].str.lower().str.contains(q, na=False)
+               self.books['author'].str.lower().str.contains(q, na=False) | \
+               self.books['genre'].str.lower().str.contains(q, na=False)
         results = self.books[mask].head(limit)
-        return results.to_dict(orient='records')
+        return results.fillna("").to_dict(orient='records')
         
     def log_interaction(self, action="click"):
         if action == "click":

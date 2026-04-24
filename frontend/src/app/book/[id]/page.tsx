@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { useStore } from '@/store/useStore';
-import { BookOpen, Plus, Check } from 'lucide-react';
+import { BookOpen, Plus, Check, ExternalLink } from 'lucide-react';
 import CarouselRow from '@/components/CarouselRow';
 
 export default function BookPage() {
@@ -34,13 +34,16 @@ export default function BookPage() {
       .then(data => setSimilarBooks(data.recommendations || []))
       .catch(console.error);
 
-      // In a real app we'd fetch the single book. For now we use the search endpoint as a fallback.
-      fetch(`http://localhost:8000/api/search?q=${id}`)
-        .then(res => res.json())
+      // Fetch the single book by ID
+      fetch(`http://localhost:8000/api/books/${id}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Book not found');
+          return res.json();
+        })
         .then(data => {
-            const found = data.find((b: any) => b.book_id === Number(id));
-            if(found) setBook(found);
-        });
+            setBook(data);
+        })
+        .catch(console.error);
     }
   }, [id, currentUser, router]);
 
@@ -74,8 +77,8 @@ export default function BookPage() {
             <p className="text-xl text-gray-300 mb-6">{book.author} &bull; {book.year_of_publication}</p>
             
             <div className="flex gap-4 mb-8">
-              <button className="flex items-center gap-2 bg-book-amber text-white px-8 py-3 rounded font-bold hover:bg-amber-600 transition shadow">
-                <BookOpen fill="currentColor" className="w-5 h-5" /> Start Reading
+              <button onClick={() => window.open(`https://books.google.com/books?q=${encodeURIComponent(book.title + ' ' + book.author)}`, '_blank')} className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-3 rounded font-bold hover:bg-indigo-500 transition shadow">
+                <ExternalLink className="w-5 h-5" /> Read Online
               </button>
               <button onClick={handleToggleWishlist} className="flex items-center gap-2 border border-gray-500 text-white px-6 py-3 rounded hover:border-white transition shadow">
                 {isFav ? <><Check className="w-5 h-5 text-green-400" /> In My List</> : <><Plus className="w-5 h-5" /> Add to List</>}
