@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Next.js Frontend",
+            "type": "node-terminal",
+            "request": "launch",
+            "command": "npm run dev",
+            "cwd": "${workspaceFolder}/frontend"
+        },
+        {
+            "name": "FastAPI Backend",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--reload",
+                "--port",
+                "8000"
+            ],
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+            "jinja": true
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Run Fullstack App (Frontend + Backend)",
+            "configurations": [
+                "Next.js Frontend",
+                "FastAPI Backend"
+            ]
+        }
+    ]
+}

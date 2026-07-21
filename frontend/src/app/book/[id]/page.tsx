@@ -11,7 +11,8 @@ export default function BookPage() {
   const router = useRouter();
   const [book, setBook] = useState<any>(null);
   const [similarBooks, setSimilarBooks] = useState<any[]>([]);
-  const { currentUser, wishlist, addToWishlist, removeFromWishlist } = useStore();
+  const { currentUser, wishlists, addToWishlist, removeFromWishlist } = useStore();
+  const wishlist = currentUser ? (wishlists[currentUser.user_id] || []) : [];
 
   useEffect(() => {
     if (!currentUser) {
@@ -25,7 +26,7 @@ export default function BookPage() {
       // Or we can get it from the recommendation endpoint logic.
       
       // Get similar books which also acts as our validation
-      fetch('http://localhost:8000/api/recommend', {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ book_id: Number(id), alpha: 0.5 })
@@ -35,7 +36,7 @@ export default function BookPage() {
       .catch(console.error);
 
       // Fetch the single book by ID
-      fetch(`http://localhost:8000/api/books/${id}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/books/${id}`)
         .then(res => {
           if (!res.ok) throw new Error('Book not found');
           return res.json();

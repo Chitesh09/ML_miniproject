@@ -12,7 +12,9 @@ export default function HeroBanner({ book }: HeroBannerProps) {
 
   if (!book) return null;
 
-  const imageUrl = book.image_url_l?.replace('http:', 'https:') || book.image_url?.replace('http:', 'https:');
+  const safeReplace = (url: any) =>
+    typeof url === 'string' && url.length > 0 ? url.replace('http:', 'https:') : '';
+  const imageUrl = safeReplace(book.image_url_l) || safeReplace(book.image_url_m) || safeReplace(book.image_url);
 
   return (
     <div className="relative w-full h-[70vh] md:h-[85vh] text-white">

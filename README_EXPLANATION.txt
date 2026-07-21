@@ -81,7 +81,7 @@ We create a massive grid (matrix) behind the scenes.
 
 Step 2: Plotting books in space
 Because we have this grid, the computer can treat every single 
-book as a point in a massive multi-dimensional graph. 
+book as a point in a massive multi-dimensional graph.
 Books that are rated similarly by the exact same users will end 
 up being plotted very close to each other on this invisible graph.
 
@@ -91,7 +91,7 @@ recommendations, our algorithm looks at where "Harry Potter"
 is plotted on the graph. 
 It then draws a circle and finds the "K" (for example, 5) 
 books that are physically closest to it in that space. 
-We measure the distance between books using a mathematical 
+We measure the distance between books using a mathematical d
 formula called "Cosine Similarity".
 
 Step 4: Making the Recommendation

@@ -10,7 +10,7 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { currentUser, setCurrentUser } = useStore();
+  const { currentUser, setCurrentUser, selectedGenre, setSelectedGenre } = useStore();
   const searchRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -28,7 +28,7 @@ export default function Navbar() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery.trim().length > 2) {
-        fetch(`http://localhost:8000/api/search?q=${searchQuery}`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/search?q=${searchQuery}`)
           .then(res => res.json())
           .then(data => setSearchResults(data))
           .catch(console.error);
@@ -76,22 +76,63 @@ export default function Navbar() {
           <Link href="/browse">
             <h1 className="text-book-amber text-2xl md:text-3xl font-extrabold cursor-pointer tracking-wider">BOOKFLIX</h1>
           </Link>
-          <div className="hidden md:flex gap-4 text-sm font-medium text-gray-300">
-            <button onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})} className="hover:text-book-amber transition cursor-pointer">Home</button>
+          <div className="hidden md:flex gap-6 text-sm font-medium text-gray-300">
+            <button onClick={() => {
+              setSelectedGenre(null);
+              window.scrollTo({top: 0, behavior: 'smooth'});
+            }} className="relative group hover:text-white transition cursor-pointer">
+              <span className={!selectedGenre ? 'text-book-amber' : ''}>Home</span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-book-amber transition-all duration-300 group-hover:w-full"></span>
+            </button>
+            <div className="relative group cursor-pointer">
+              <span className={`hover:text-white transition ${selectedGenre ? 'text-book-amber' : ''}`}>Genres</span>
+              <span className={`absolute -bottom-1 left-0 h-0.5 bg-book-amber transition-all duration-300 ${selectedGenre ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+              <div className="hidden group-hover:block absolute top-6 left-0 pt-2 z-[60]">
+                <div className="bg-book-card border border-gray-700 w-48 flex flex-col py-2 text-sm text-white rounded shadow-2xl">
+                  {['Fantasy', 'Science Fiction', 'Romance', 'Mystery', 'Horror', 'Non-Fiction', 'Thriller', 'Young Adult'].map(genre => (
+                    <button 
+                      key={genre}
+                      onClick={() => {
+                        setSelectedGenre(genre);
+                        router.push('/browse');
+                      }}
+                      className={`px-4 py-2 text-left hover:bg-gray-800 transition ${selectedGenre === genre ? 'text-book-amber font-bold' : ''}`}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                  <button 
+                      onClick={() => {
+                        setSelectedGenre(null);
+                        router.push('/browse');
+                      }}
+                      className="px-4 py-2 text-left hover:bg-gray-800 transition border-t border-gray-700 mt-1 text-book-amber"
+                  >
+                    All Genres
+                  </button>
+                </div>
+              </div>
+            </div>
             <button onClick={() => {
               const el = document.getElementById("series-row");
               if(el) { 
                 const y = el.getBoundingClientRect().top + window.scrollY - 80;
                 window.scrollTo({ top: y, behavior: 'smooth' });
               }
-            }} className="hover:text-book-amber transition cursor-pointer">Series</button>
+            }} className="relative group hover:text-white transition cursor-pointer">
+              <span>Series</span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-book-amber transition-all duration-300 group-hover:w-full"></span>
+            </button>
             <button onClick={() => {
               const el = document.getElementById("authors-row");
               if(el) { 
                 const y = el.getBoundingClientRect().top + window.scrollY - 80;
                 window.scrollTo({ top: y, behavior: 'smooth' });
               }
-            }} className="hover:text-book-amber transition cursor-pointer">Authors</button>
+            }} className="relative group hover:text-white transition cursor-pointer">
+              <span>Authors</span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-book-amber transition-all duration-300 group-hover:w-full"></span>
+            </button>
             <button onClick={() => {
               const el = document.getElementById("my-list-row");
               if(el) { 
@@ -99,7 +140,10 @@ export default function Navbar() {
                 window.scrollTo({ top: y, behavior: 'smooth' });
               }
               else alert("Add books to your list first!");
-            }} className="hover:text-book-amber transition cursor-pointer">My List</button>
+            }} className="relative group hover:text-white transition cursor-pointer">
+              <span>My List</span>
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-book-amber transition-all duration-300 group-hover:w-full"></span>
+            </button>
           </div>
         </div>
 

@@ -1,25 +1,46 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useStore } from '@/store/useStore';
-import { X, BookOpen, Plus, Check, ThumbsUp, ThumbsDown, Sparkles, Clock, Compass, ExternalLink } from 'lucide-react';
+import { X, BookOpen, Plus, Check, ThumbsUp, ThumbsDown, Sparkles, Clock, Compass, ExternalLink, ChevronDown } from 'lucide-react';
 import CarouselRow from './CarouselRow';
 import { useRouter } from 'next/navigation';
 
 export default function BookDetailModal() {
-  const { currentUser, isModalOpen, selectedBook, closeModal, wishlist, addToWishlist, removeFromWishlist, triggerInteractionsRefresh } = useStore();
+  const { currentUser, isModalOpen, selectedBook, closeModal, wishlists, addToWishlist, removeFromWishlist, triggerInteractionsRefresh } = useStore();
   const [similarBooks, setSimilarBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
+  const [showReadDropdown, setShowReadDropdown] = useState(false);
+  const [readLinks, setReadLinks] = useState<any[]>([]);
+  const [loadingLinks, setLoadingLinks] = useState(false);
+  const [linksError, setLinksError] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  const wishlist = currentUser ? (wishlists[currentUser.user_id] || []) : [];
   const isFav = wishlist.some(b => b?.book_id === selectedBook?.book_id);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowReadDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isModalOpen && selectedBook) {
+      setFeedbackGiven(null);
       setLoading(true);
+      setShowReadDropdown(false);
+      setReadLinks([]);
       // Log click
-      fetch('http://localhost:8000/api/interactions/click', { method: 'POST' }).catch(console.error);
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/interactions/click`, { method: 'POST' }).catch(console.error);
 
       // Fetch similar books
-      fetch('http://localhost:8000/api/recommend', {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ book_id: selectedBook.book_id, alpha: 0.5 })
@@ -41,13 +62,39 @@ export default function BookDetailModal() {
   };
 
   const handleFeedback = (type: 'positive' | 'negative') => {
-    fetch(`http://localhost:8000/api/feedback?type=${type}`, { method: 'POST' }).catch(console.error);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/feedback?type=${type}`, { method: 'POST' }).catch(console.error);
+    setFeedbackGiven(type);
     triggerInteractionsRefresh();
   };
 
   const handleReadClick = () => {
     closeModal();
     router.push(`/book/${selectedBook.book_id}`);
+  };
+
+  const handleReadOnlineClick = async () => {
+    if (showReadDropdown) {
+      setShowReadDropdown(false);
+      return;
+    }
+    
+    setShowReadDropdown(true);
+    
+    if (readLinks.length === 0) {
+      setLoadingLinks(true);
+      setLinksError(false);
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/books/${selectedBook.book_id}/read-links`);
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        setReadLinks(data.read_links || []);
+      } catch (err) {
+        console.error(err);
+        setLinksError(true);
+      } finally {
+        setLoadingLinks(false);
+      }
+    }
   };
 
   const imageUrl = selectedBook.image_url_l?.replace('http:', 'https:') || selectedBook.image_url?.replace('http:', 'https:');
@@ -93,16 +140,53 @@ export default function BookDetailModal() {
               <button onClick={handleReadClick} className="flex items-center gap-2 bg-book-amber text-white px-6 py-2 rounded font-bold hover:bg-amber-600 transition shadow-lg">
                 <BookOpen fill="currentColor" className="w-5 h-5" /> Details
               </button>
-              <button onClick={() => window.open(`https://books.google.com/books?q=${encodeURIComponent(selectedBook.title + ' ' + selectedBook.author)}`, '_blank')} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-500 transition shadow-lg">
-                <ExternalLink className="w-5 h-5" /> Read Online
-              </button>
+              
+              <div className="relative" ref={dropdownRef}>
+                <button onClick={handleReadOnlineClick} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded font-bold hover:bg-indigo-500 transition shadow-lg">
+                  <ExternalLink className="w-5 h-5" /> Read Online <ChevronDown className="w-4 h-4 ml-1" />
+                </button>
+                {showReadDropdown && (
+                  <div className="absolute bottom-full mb-2 left-0 bg-book-dark border border-gray-600 rounded-lg shadow-xl w-64 overflow-hidden z-50">
+                    {loadingLinks ? (
+                      <div className="p-4 text-center text-gray-400 text-sm animate-pulse">Loading sources...</div>
+                    ) : linksError || readLinks.length === 0 ? (
+                      <div className="p-4 text-center text-gray-400 text-sm">No free sources found. Try preview or purchase options.</div>
+                    ) : (
+                      <div className="flex flex-col">
+                        {readLinks.map((link, i) => (
+                          <a 
+                            key={i}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-3 hover:bg-gray-700 text-white text-sm flex items-center justify-between border-b border-gray-700 last:border-0 transition"
+                            onClick={() => setShowReadDropdown(false)}
+                          >
+                            <span>Read on {link.name}</span>
+                            <ExternalLink className="w-4 h-4 text-gray-400" />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button onClick={handleToggleWishlist} className="w-10 h-10 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition bg-book-dark shadow" title="Add to My List">
                 {isFav ? <Check className="w-5 h-5 text-green-400" /> : <Plus className="w-5 h-5" />}
               </button>
-              <button onClick={() => handleFeedback('positive')} className="w-10 h-10 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition bg-book-dark shadow" title="I like this">
+              <button 
+                onClick={() => handleFeedback('positive')} 
+                className={`w-10 h-10 border-2 rounded-full flex items-center justify-center transition shadow ${feedbackGiven === 'positive' ? 'border-green-400 bg-green-400/20 text-green-400' : 'border-gray-400 hover:border-white hover:bg-white/20 bg-book-dark'}`} 
+                title="I like this"
+              >
                 <ThumbsUp className="w-4 h-4" />
               </button>
-              <button onClick={() => handleFeedback('negative')} className="w-10 h-10 border-2 border-gray-400 rounded-full flex items-center justify-center hover:border-white hover:bg-white/20 transition bg-book-dark shadow" title="Not for me">
+              <button 
+                onClick={() => handleFeedback('negative')} 
+                className={`w-10 h-10 border-2 rounded-full flex items-center justify-center transition shadow ${feedbackGiven === 'negative' ? 'border-red-400 bg-red-400/20 text-red-400' : 'border-gray-400 hover:border-white hover:bg-white/20 bg-book-dark'}`} 
+                title="Not for me"
+              >
                 <ThumbsDown className="w-4 h-4" />
               </button>
             </div>

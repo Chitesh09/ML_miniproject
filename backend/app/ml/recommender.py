@@ -57,6 +57,9 @@ class HybridRecommender:
         # Note: sparse matrix transpose is .T
         self.user_knn_model.fit(self.user_item_matrix.T)
         
+        self.all_book_ids = self.books['book_id'].tolist()
+        self.book_id_to_idx = {bid: i for i, bid in enumerate(self.all_book_ids)}
+        
         return True
 
     def get_book_details(self, book_id):
@@ -220,6 +223,101 @@ class HybridRecommender:
                 'book_details': self.get_book_details(bid)
             })
         return final_recs
+
+    def _compute_dynamic_scores(self, candidate_ids, liked_books, disliked_books):
+        liked_indices = [self.book_id_to_idx[bid] for bid in liked_books if bid in self.book_id_to_idx]
+        disliked_indices = [self.book_id_to_idx[bid] for bid in disliked_books if bid in self.book_id_to_idx]
+        
+        scores = {}
+        for bid in candidate_ids:
+            if bid not in self.book_id_to_idx:
+                scores[bid] = 0.0
+                continue
+                
+            idx = self.book_id_to_idx[bid]
+            
+            liked_score = 0.0
+            if liked_indices:
+                liked_sims = self.book_similarity_content[idx][liked_indices]
+                liked_score = float(np.mean(liked_sims))
+                
+            disliked_score = 0.0
+            if disliked_indices:
+                disliked_sims = self.book_similarity_content[idx][disliked_indices]
+                disliked_score = float(np.mean(disliked_sims))
+                
+            # Weighted scoring for stability: 0.7 liked, 0.3 disliked
+            # If no disliked books, just use liked_score.
+            if disliked_indices:
+                final_score = (0.7 * liked_score) - (0.3 * disliked_score)
+            else:
+                final_score = liked_score
+
+            # Normalize to 0-1 range
+            # Note: cosine similarity is already between 0 and 1 for positive tf-idf.
+            # But the max similarity might not be 1.0. We'll just clip it.
+            final_score = max(0.0, min(1.0, final_score))
+            
+            # Boost score slightly to make percentage look better (e.g. 50-95%)
+            if final_score > 0:
+                final_score = 0.4 + (final_score * 0.6)
+                
+            scores[bid] = round(final_score, 4)
+            
+        return scores
+
+    def dynamic_recommendation(self, liked_books, disliked_books, limit=10):
+        if not liked_books:
+            return []
+            
+        candidate_scores = self._compute_dynamic_scores(self.all_book_ids, liked_books, disliked_books)
+        
+        excluded_books = set(liked_books).union(set(disliked_books))
+        
+        recs = []
+        sorted_candidates = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        for bid, score in sorted_candidates:
+            if bid not in excluded_books and score > 0:
+                explanation = "✨ Popular among readers like you"
+                
+                if liked_books and bid in self.book_id_to_idx:
+                    idx = self.book_id_to_idx[bid]
+                    best_sim = -1
+                    best_liked_bid = None
+                    
+                    for liked_bid in liked_books:
+                        if liked_bid in self.book_id_to_idx:
+                            l_idx = self.book_id_to_idx[liked_bid]
+                            sim = self.book_similarity_content[idx][l_idx]
+                            if sim > best_sim:
+                                best_sim = sim
+                                best_liked_bid = liked_bid
+                    
+                    if best_sim > 0.15 and best_liked_bid:
+                        liked_details = self.get_book_details(best_liked_bid)
+                        if liked_details and 'title' in liked_details:
+                            explanation = f"✨ Because you liked {liked_details['title']}"
+                        else:
+                            explanation = "✨ Trending in your favorite genres"
+                elif liked_books:
+                    explanation = "✨ Trending in your favorite genres"
+
+                recs.append({
+                    'book_id': bid,
+                    'confidence_score': score,
+                    'explanation': explanation,
+                    'book_details': self.get_book_details(bid)
+                })
+            if len(recs) >= limit:
+                break
+                
+        return recs
+
+    def score_books(self, candidate_ids, liked_books, disliked_books):
+        if not liked_books:
+            return {bid: 0.0 for bid in candidate_ids}
+        return self._compute_dynamic_scores(candidate_ids, liked_books, disliked_books)
 
     def search_books(self, query, limit=5):
         if self.books is None or not query:
