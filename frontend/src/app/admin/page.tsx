@@ -5,7 +5,7 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState<any>(null);
 
   const fetchMetrics = () => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/admin/metrics`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/admin/metrics`)
       .then(res => res.json())
       .then(data => setMetrics(data))
       .catch(console.error);

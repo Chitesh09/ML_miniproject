@@ -28,7 +28,7 @@ export default function NotificationSystem() {
   const fetchNotifications = useCallback(async () => {
     try {
       const userParam = currentUser ? `?user_id=${currentUser.user_id}` : '';
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/notifications${userParam}&limit=3`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/notifications${userParam}&limit=3`);
       if (!res.ok) return;
       const data = await res.json();
       const incoming: Notification[] = (data.notifications || []).filter(

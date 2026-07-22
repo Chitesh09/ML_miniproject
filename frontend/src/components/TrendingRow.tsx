@@ -32,7 +32,7 @@ export default function TrendingRow() {
   const fetchTrending = useCallback(async (isFirst = false) => {
     try {
       if (!isFirst) setIsRefreshing(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/trending-live?limit=20`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/trending-live?limit=20`);
       if (!res.ok) return;
       const data = await res.json();
       const nextTrending: TrendingBook[] = data.trending || [];

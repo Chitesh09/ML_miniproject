@@ -49,7 +49,7 @@ export default function LiveActivityFeed() {
     try {
       const userId = currentUserIdRef.current;
       const excludeParam = userId != null ? `&exclude_user=${userId}` : '';
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/activity-feed?limit=20${excludeParam}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/activity-feed?limit=20${excludeParam}`);
       if (!res.ok) return;
       const data = await res.json();
       const incoming: Activity[] = data.activities || [];

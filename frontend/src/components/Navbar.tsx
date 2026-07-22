@@ -28,7 +28,7 @@ export default function Navbar() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery.trim().length > 2) {
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/search?q=${searchQuery}`)
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/search?q=${searchQuery}`)
           .then(res => res.json())
           .then(data => setSearchResults(data))
           .catch(console.error);

@@ -16,7 +16,7 @@ export default function ProfileSelection() {
   const [showAllProfiles, setShowAllProfiles] = useState(false);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/users`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/users`)
       .then(res => res.json())
       .then(data => setUsers(data.slice(0, 20))) // Get top 20
       .catch(console.error);

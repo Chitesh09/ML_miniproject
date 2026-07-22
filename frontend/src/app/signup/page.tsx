@@ -35,7 +35,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com';
 
   const toggleGenre = (genre: string) => {
     if (selectedGenres.includes(genre)) {

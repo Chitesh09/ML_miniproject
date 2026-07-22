@@ -25,7 +25,7 @@ export default function BookDetailModal() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com';
 
   const wishlist = currentUser ? (wishlists[currentUser.user_id] || []) : [];
   const isFav = wishlist.some(b => b?.book_id === selectedBook?.book_id);
@@ -122,7 +122,7 @@ export default function BookDetailModal() {
   };
 
   const handleFeedback = (type: 'positive' | 'negative') => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/feedback?type=${type}`, { method: 'POST' }).catch(console.error);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/feedback?type=${type}`, { method: 'POST' }).catch(console.error);
     setFeedbackGiven(type);
     triggerInteractionsRefresh();
   };
@@ -144,7 +144,7 @@ export default function BookDetailModal() {
       setLoadingLinks(true);
       setLinksError(false);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/books/${selectedBook.book_id}/read-links`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/books/${selectedBook.book_id}/read-links`);
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
         setReadLinks(data.read_links || []);

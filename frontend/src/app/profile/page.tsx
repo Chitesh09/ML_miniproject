@@ -29,7 +29,7 @@ export default function ProfilePage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com';
 
   const userWishlist = currentUser ? (wishlists[currentUser.user_id] || []) : [];
   const userPrefs = currentUser ? (userPreferences[currentUser.user_id] || { liked: [], disliked: [] }) : { liked: [], disliked: [] };

@@ -28,7 +28,7 @@ export default function LoginPage() {
   const [demoUsers, setDemoUsers] = useState<DemoUser[]>([]);
   const [loadingDemo, setLoadingDemo] = useState<number | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com';
 
   useEffect(() => {
     // Fetch demo users for quick sign-in

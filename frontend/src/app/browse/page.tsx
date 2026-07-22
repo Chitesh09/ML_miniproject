@@ -11,7 +11,7 @@ import TrendingRow from '@/components/TrendingRow';
 import NotificationSystem from '@/components/NotificationSystem';
 import { HeroSkeleton, RowSkeleton } from '@/components/Skeletons';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API = process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com';
 
 // ── COLD START BANNER ─────────────────────────────────────────────────────
 const ColdStartBanner = memo(function ColdStartBanner() {

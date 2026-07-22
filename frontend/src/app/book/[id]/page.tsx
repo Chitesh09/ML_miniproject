@@ -26,7 +26,7 @@ export default function BookPage() {
       // Or we can get it from the recommendation endpoint logic.
       
       // Get similar books which also acts as our validation
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/recommend`, {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ book_id: Number(id), alpha: 0.5 })
@@ -36,7 +36,7 @@ export default function BookPage() {
       .catch(console.error);
 
       // Fetch the single book by ID
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/books/${id}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bookflix-backend-rka3.onrender.com'}/api/books/${id}`)
         .then(res => {
           if (!res.ok) throw new Error('Book not found');
           return res.json();
