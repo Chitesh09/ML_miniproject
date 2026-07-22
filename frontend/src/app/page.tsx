@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+import Link from 'next/link';
+
 export default function ProfileSelection() {
   const [users, setUsers] = useState<number[]>([]);
   const { setCurrentUser } = useStore();
@@ -20,10 +22,10 @@ export default function ProfileSelection() {
       .catch(console.error);
   }, []);
 
-  const selectUser = (userId: number, name: string) => {
+  const selectUser = (userId: number, name: string, color: string) => {
     setIsTransitioning(userId);
     setTimeout(() => {
-      setCurrentUser({ user_id: userId, name });
+      setCurrentUser({ user_id: userId, name, avatar_color: color });
       router.push('/browse');
     }, 600); // Wait for animation
   };
@@ -45,9 +47,24 @@ export default function ProfileSelection() {
   };
 
   return (
-    <div className="min-h-screen bg-book-dark text-white flex flex-col items-center justify-center p-8">
-      <div className="absolute top-4 left-8 md:left-12">
+    <div className="min-h-screen bg-book-dark text-white flex flex-col items-center justify-center p-8 relative">
+      {/* Top Header */}
+      <div className="absolute top-6 left-8 md:left-12 right-8 md:right-12 flex items-center justify-between z-40">
         <h1 className="text-book-amber text-3xl md:text-5xl font-extrabold tracking-wider">BOOKFLIX</h1>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/login"
+            className="text-sm font-semibold text-gray-300 hover:text-white border border-gray-600 hover:border-book-amber px-4 py-2 rounded transition"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/signup"
+            className="text-sm font-semibold bg-book-amber hover:bg-amber-600 text-slate-950 px-4 py-2 rounded transition shadow-lg"
+          >
+            Sign Up
+          </Link>
+        </div>
       </div>
       
       <div className="animate-in fade-in zoom-in duration-700 ease-out flex flex-col items-center w-full max-w-6xl relative group/container">
@@ -81,7 +98,7 @@ export default function ProfileSelection() {
                       : 'opacity-0 scale-90 pointer-events-none'
                     : 'hover:scale-110'
                 }`}
-                onClick={() => isTransitioning === null && selectUser(userId, name)}
+                onClick={() => isTransitioning === null && selectUser(userId, name, color)}
               >
                 <div className={`w-24 h-24 md:w-36 md:h-36 rounded-md ${color} flex items-center justify-center text-4xl md:text-6xl font-bold text-white shadow-xl transition-all duration-300 ${
                   isTransitioning === userId 

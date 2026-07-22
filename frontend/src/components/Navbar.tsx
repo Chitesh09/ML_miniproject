@@ -215,19 +215,42 @@ export default function Navbar() {
             )}
           </div>
           
-          {/* Profile Dropdown */}
-          {currentUser && (
+          {/* Profile Dropdown or Auth Actions */}
+          {currentUser ? (
             <div className="group relative cursor-pointer flex items-center gap-2">
-              <div className="w-8 h-8 rounded bg-blue-800 flex items-center justify-center text-white font-bold">
-                {currentUser.name ? currentUser.name.charAt(0) : 'U'}
+              <div className={`w-8 h-8 rounded-full ${currentUser.avatar_color || 'bg-blue-800'} flex items-center justify-center text-white font-bold text-sm shadow-md`}>
+                {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="hidden group-hover:block absolute top-8 right-0 pt-4 z-[60]">
-                <div className="bg-book-card border border-gray-700 w-40 flex flex-col p-2 text-sm text-white rounded shadow-2xl">
-                  <div className="px-2 py-2 border-b border-gray-700 font-bold text-book-amber">{currentUser.name || `User ${currentUser.user_id}`}</div>
-                  <Link href="/" className="px-2 py-2 hover:bg-gray-800 transition rounded mt-1">Change Profile</Link>
-                  <button onClick={handleSignOut} className="px-2 py-2 text-left hover:bg-gray-800 transition rounded w-full">Sign out</button>
+                <div className="bg-book-card border border-gray-700 w-48 flex flex-col p-2 text-sm text-white rounded-lg shadow-2xl">
+                  <div className="px-3 py-2 border-b border-gray-700">
+                    <p className="font-bold text-book-amber truncate">{currentUser.name || `User ${currentUser.user_id}`}</p>
+                    {currentUser.email && <p className="text-[11px] text-gray-400 truncate">{currentUser.email}</p>}
+                  </div>
+                  <Link href="/profile" className="px-3 py-2 hover:bg-gray-800 transition rounded mt-1 text-xs font-semibold text-white flex items-center gap-1.5">
+                    <span>My Profile & Analytics</span>
+                  </Link>
+                  <Link href="/" className="px-3 py-2 hover:bg-gray-800 transition rounded text-xs text-gray-300">Switch Profile</Link>
+                  <button onClick={handleSignOut} className="px-3 py-2 text-left hover:bg-gray-800 transition rounded text-xs text-red-400 hover:text-red-300 w-full mt-1">
+                    Sign out
+                  </button>
                 </div>
               </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-xs font-semibold text-gray-300 hover:text-white transition"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                className="text-xs font-semibold bg-book-amber hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded transition shadow"
+              >
+                Sign Up
+              </Link>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useStore } from '@/store/useStore';
-import { X, BookOpen, Plus, Check, ThumbsUp, ThumbsDown, Sparkles, Clock, Compass, ExternalLink, ChevronDown } from 'lucide-react';
+import { X, BookOpen, Plus, Check, ThumbsUp, ThumbsDown, Sparkles, Clock, Compass, ExternalLink, ChevronDown, Star, Send, MessageSquare } from 'lucide-react';
 import CarouselRow from './CarouselRow';
 import { useRouter } from 'next/navigation';
 
@@ -13,8 +13,19 @@ export default function BookDetailModal() {
   const [readLinks, setReadLinks] = useState<any[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
   const [linksError, setLinksError] = useState(false);
+  
+  // Reviews state
+  const [reviewsData, setReviewsData] = useState<{ reviews: any[]; average_rating: number; total_reviews: number }>({ reviews: [], average_rating: 0, total_reviews: 0 });
+  const [userRating, setUserRating] = useState<number>(5);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [reviewText, setReviewText] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState<string | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   const wishlist = currentUser ? (wishlists[currentUser.user_id] || []) : [];
   const isFav = wishlist.some(b => b?.book_id === selectedBook?.book_id);
@@ -36,11 +47,20 @@ export default function BookDetailModal() {
       setLoading(true);
       setShowReadDropdown(false);
       setReadLinks([]);
+      setReviewText('');
+      setReviewMsg(null);
+      
       // Log click
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/interactions/click`, { method: 'POST' }).catch(console.error);
+      fetch(`${API_URL}/api/interactions/click`, { method: 'POST' }).catch(console.error);
+
+      // Fetch reviews
+      fetch(`${API_URL}/api/books/${selectedBook.book_id}/reviews`)
+        .then(res => res.json())
+        .then(data => setReviewsData(data))
+        .catch(console.error);
 
       // Fetch similar books
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/recommend`, {
+      fetch(`${API_URL}/api/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ book_id: selectedBook.book_id, alpha: 0.5 })
@@ -52,7 +72,47 @@ export default function BookDetailModal() {
     } else {
       setSimilarBooks([]);
     }
-  }, [isModalOpen, selectedBook]);
+  }, [isModalOpen, selectedBook, API_URL]);
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBook) return;
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
+    if (!reviewText.trim()) return;
+
+    setIsSubmittingReview(true);
+    setReviewMsg(null);
+
+    try {
+      const res = await fetch(`${API_URL}/api/books/${selectedBook.book_id}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentUser.user_id,
+          user_name: currentUser.name || `User ${currentUser.user_id}`,
+          avatar_color: currentUser.avatar_color || 'bg-blue-800',
+          rating: userRating,
+          review_text: reviewText,
+        }),
+      });
+
+      if (res.ok) {
+        setReviewText('');
+        setReviewMsg('Thank you! Your review has been published.');
+        // Refresh reviews list
+        const d = await (await fetch(`${API_URL}/api/books/${selectedBook.book_id}/reviews`)).json();
+        setReviewsData(d);
+        triggerInteractionsRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   if (!isModalOpen || !selectedBook) return null;
 
@@ -237,10 +297,120 @@ export default function BookDetailModal() {
               <div>
                 <h4 className="font-semibold text-white">Why you should read this</h4>
                 <p className="text-sm text-indigo-200 mt-1 italic">
-                  "If you enjoyed other books published by {selectedBook.publisher}, this {randomVibe.toLowerCase()} journey by {selectedBook.author} will keep you turning pages late into the night."
+                  &quot;If you enjoyed other books published by {selectedBook.publisher}, this {randomVibe.toLowerCase()} journey by {selectedBook.author} will keep you turning pages late into the night.&quot;
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Community Reviews & Star Ratings Section */}
+        <div className="p-8 border-b border-gray-700 bg-slate-900/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-book-amber" /> Community Reviews
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">See what fellow readers think or leave your rating</p>
+            </div>
+            {reviewsData.total_reviews > 0 && (
+              <div className="flex items-center gap-3 bg-slate-800/80 px-4 py-2 rounded-lg border border-gray-700">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-4 h-4 ${
+                        star <= Math.round(reviewsData.average_rating)
+                          ? 'text-amber-400 fill-amber-400'
+                          : 'text-gray-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-lg font-bold text-white">{reviewsData.average_rating}</span>
+                <span className="text-xs text-gray-400">({reviewsData.total_reviews} reviews)</span>
+              </div>
+            )}
+          </div>
+
+          {/* Submit Review Form */}
+          <form onSubmit={handleReviewSubmit} className="mb-8 bg-slate-800/70 p-5 rounded-xl border border-gray-700/80">
+            <h4 className="text-sm font-semibold text-gray-200 mb-3">Write a Review</h4>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xs text-gray-400 mr-2">Your Rating:</span>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  onClick={() => setUserRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(null)}
+                  className={`w-6 h-6 cursor-pointer transition ${
+                    star <= (hoverRating ?? userRating)
+                      ? 'text-amber-400 fill-amber-400 scale-110'
+                      : 'text-gray-600 hover:text-gray-400'
+                  }`}
+                />
+              ))}
+              <span className="text-xs font-bold text-book-amber ml-2">
+                {userRating} / 5 Stars
+              </span>
+            </div>
+
+            <textarea
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              placeholder={currentUser ? "What did you think of this book? Share your thoughts..." : "Please sign in to leave a review."}
+              rows={3}
+              required
+              disabled={!currentUser}
+              className="w-full bg-slate-950/80 border border-gray-700 rounded-lg p-3 text-sm text-white focus:border-book-amber focus:ring-1 focus:ring-book-amber outline-none transition placeholder-gray-500 disabled:opacity-50"
+            />
+
+            {reviewMsg && (
+              <p className="text-xs text-emerald-400 font-semibold mt-2">{reviewMsg}</p>
+            )}
+
+            <div className="flex justify-end mt-3">
+              <button
+                type="submit"
+                disabled={isSubmittingReview || !currentUser || !reviewText.trim()}
+                className="bg-book-amber hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Submit Review</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Existing Reviews List */}
+          <div className="space-y-4 max-h-80 overflow-y-auto pr-2 no-scrollbar">
+            {reviewsData.reviews && reviewsData.reviews.length > 0 ? (
+              reviewsData.reviews.map((rev) => (
+                <div key={rev.review_id} className="p-4 bg-slate-800/40 rounded-lg border border-gray-800/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-full ${rev.avatar_color || 'bg-blue-800'} flex items-center justify-center text-xs font-bold text-white shadow`}>
+                        {rev.user_name ? rev.user_name.charAt(0) : 'U'}
+                      </div>
+                      <span className="text-sm font-semibold text-white">{rev.user_name}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`w-3.5 h-3.5 ${
+                            s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-700'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-300 leading-relaxed">{rev.review_text}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-500 italic text-center py-4">No reviews yet. Be the first to share your review!</p>
+            )}
           </div>
         </div>
 

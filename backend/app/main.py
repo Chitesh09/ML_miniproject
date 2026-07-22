@@ -62,6 +62,7 @@ async def startup_event():
 
     # Seed a few synthetic activities so the feed isn't empty on first load
     _seed_synthetic_activities()
+    _seed_synthetic_reviews()
 
 
 def _seed_synthetic_activities():
@@ -89,8 +90,49 @@ def _seed_synthetic_activities():
             activity_manager._activities[0]["timestamp"] -= random.uniform(30, 540)
 
 # ---------------------------------------------------------------------------
+# In-memory User Store with Seeded Demo Accounts
+# ---------------------------------------------------------------------------
+USERS_DB = {}
+
+DEMO_NAMES = [
+    "Chitesh", "Yeshu", "Rishi", "Varun", 
+    "Alice", "Bob", "Charlie", "Diana", 
+    "Eve", "Frank", "Grace", "Heidi", 
+    "Ivan", "Judy", "Mallory", "Nina", 
+    "Oscar", "Peggy", "Romeo", "Sybil"
+]
+
+def _init_users_db():
+    global USERS_DB
+    colors = ["bg-blue-800", "bg-book-brown", "bg-emerald-800", "bg-purple-800", "bg-rose-800", "bg-teal-800"]
+    for idx, name in enumerate(DEMO_NAMES, start=1):
+        email = f"{name.lower()}@bookflix.com"
+        USERS_DB[email] = {
+            "user_id": idx,
+            "name": name,
+            "email": email,
+            "password": "password123",
+            "avatar_color": colors[(idx - 1) % len(colors)],
+            "preferred_genres": ["Fantasy", "Science Fiction"] if idx % 2 == 0 else ["Romance", "Mystery"],
+        }
+
+_init_users_db()
+
+# ---------------------------------------------------------------------------
 # Pydantic models
 # ---------------------------------------------------------------------------
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    preferred_genres: Optional[List[str]] = []
+    avatar_color: Optional[str] = "bg-blue-800"
+
+class LoginRequest(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
+    user_id: Optional[int] = None
+
 class RecommendationRequest(BaseModel):
     book_id: Optional[int] = None
     user_id: Optional[int] = None
@@ -111,9 +153,167 @@ class ActivityRequest(BaseModel):
     action: str          # liked | disliked | added_to_list | removed_from_list
     book_id: int
 
+class ReviewRequest(BaseModel):
+    user_id: int
+    user_name: Optional[str] = "Anonymous Reader"
+    avatar_color: Optional[str] = "bg-blue-800"
+    rating: int  # 1 to 5
+    review_text: str
+
 # ---------------------------------------------------------------------------
-# ── ORIGINAL ENDPOINTS (unchanged) ──────────────────────────────────────────
+# In-Memory Reviews Store & Seeding
 # ---------------------------------------------------------------------------
+REVIEWS_DB = {}
+
+def _seed_synthetic_reviews():
+    global REVIEWS_DB
+    if recommender.books is None or recommender.books.empty:
+        return
+
+    sample_books = recommender.books.head(20)
+    sample_texts = [
+        "An absolute masterpiece! The world-building and character development blew me away.",
+        "Really captivating storyline with plot twists that kept me reading late into the night.",
+        "Thought-provoking and beautifully written. Highly recommend to any avid reader!",
+        "Fast-paced and exciting! A great addition to my top reads of the year.",
+        "Fascinating concepts, though the middle chapters dragged slightly. Still a 4-star read!"
+    ]
+    sample_users = [
+        (1, "Chitesh", "bg-blue-800"),
+        (2, "Yeshu", "bg-book-brown"),
+        (3, "Rishi", "bg-emerald-800"),
+        (4, "Varun", "bg-purple-800"),
+        (5, "Alice", "bg-rose-800"),
+    ]
+
+    for idx, row in sample_books.iterrows():
+        bid = int(row["book_id"])
+        REVIEWS_DB[bid] = []
+        for k in range(2):
+            uid, uname, color = sample_users[(idx + k) % len(sample_users)]
+            text = sample_texts[(idx + k) % len(sample_texts)]
+            rating = 4 + ((idx + k) % 2)
+            REVIEWS_DB[bid].append({
+                "review_id": f"rev_{bid}_{uid}_{k}",
+                "user_id": uid,
+                "user_name": uname,
+                "avatar_color": color,
+                "rating": rating,
+                "review_text": text,
+                "timestamp": time.time() - (k + 1) * 86400,
+            })
+
+
+# ---------------------------------------------------------------------------
+# ── AUTHENTICATION ENDPOINTS ─────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+
+@app.post("/api/auth/register")
+async def register_user(req: RegisterRequest):
+    email_clean = req.email.strip().lower()
+    if not email_clean or "@" not in email_clean:
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="Name is required.")
+    if len(req.password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters long.")
+
+    if email_clean in USERS_DB:
+        raise HTTPException(status_code=400, detail="Account with this email already exists.")
+
+    new_id = max([u["user_id"] for u in USERS_DB.values()] or [0]) + 1
+    user_record = {
+        "user_id": new_id,
+        "name": req.name.strip(),
+        "email": email_clean,
+        "password": req.password,
+        "avatar_color": req.avatar_color or "bg-blue-800",
+        "preferred_genres": req.preferred_genres or [],
+    }
+    USERS_DB[email_clean] = user_record
+
+    return {
+        "status": "success",
+        "message": "Account created successfully!",
+        "user": {
+            "user_id": user_record["user_id"],
+            "name": user_record["name"],
+            "email": user_record["email"],
+            "avatar_color": user_record["avatar_color"],
+            "preferred_genres": user_record["preferred_genres"],
+        }
+    }
+
+@app.post("/api/auth/login")
+async def login_user(req: LoginRequest):
+    # Support login by user_id directly
+    if req.user_id:
+        found_by_id = next((u for u in USERS_DB.values() if u["user_id"] == req.user_id), None)
+        if found_by_id:
+            return {
+                "status": "success",
+                "user": {
+                    "user_id": found_by_id["user_id"],
+                    "name": found_by_id["name"],
+                    "email": found_by_id["email"],
+                    "avatar_color": found_by_id["avatar_color"],
+                    "preferred_genres": found_by_id.get("preferred_genres", []),
+                }
+            }
+        # Fallback if user_id in ratings dataset but not explicitly in USERS_DB
+        return {
+            "status": "success",
+            "user": {
+                "user_id": req.user_id,
+                "name": f"User {req.user_id}",
+                "email": f"user{req.user_id}@bookflix.com",
+                "avatar_color": "bg-blue-800",
+                "preferred_genres": [],
+            }
+        }
+
+    if not req.email:
+        raise HTTPException(status_code=400, detail="Email or User ID is required.")
+
+    email_clean = req.email.strip().lower()
+    user_record = USERS_DB.get(email_clean)
+
+    if not user_record:
+        # Check if email is numeric string user_id
+        if email_clean.isdigit():
+            uid = int(email_clean)
+            return await login_user(LoginRequest(user_id=uid))
+        raise HTTPException(status_code=401, detail="No account found with this email address.")
+
+    # Validate password if provided
+    if req.password and user_record.get("password") and req.password != user_record["password"]:
+        raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
+
+    return {
+        "status": "success",
+        "user": {
+            "user_id": user_record["user_id"],
+            "name": user_record["name"],
+            "email": user_record["email"],
+            "avatar_color": user_record.get("avatar_color", "bg-blue-800"),
+            "preferred_genres": user_record.get("preferred_genres", []),
+        }
+    }
+
+@app.get("/api/auth/demo-users")
+async def get_demo_users():
+    demo_list = [
+        {
+            "user_id": u["user_id"],
+            "name": u["name"],
+            "email": u["email"],
+            "avatar_color": u.get("avatar_color", "bg-blue-800"),
+        }
+        for u in list(USERS_DB.values())[:20]
+    ]
+    return {"demo_users": demo_list}
+
+
 
 @app.get("/api/users")
 async def get_users():
@@ -331,3 +531,142 @@ async def get_genres():
         .rename(columns={"index": "genre", "genre": "count"})
     )
     return genre_counts.to_dict(orient="records")
+
+
+# ---------------------------------------------------------------------------
+# ── REVIEWS & USER ANALYTICS ENDPOINTS ─────────────────────────────────────
+# ---------------------------------------------------------------------------
+
+@app.get("/api/books/{book_id}/reviews")
+async def get_book_reviews(book_id: int):
+    """Fetch all reviews, average rating, and rating distribution for a book."""
+    reviews = REVIEWS_DB.get(book_id, [])
+    if not reviews:
+        return {
+            "book_id": book_id,
+            "average_rating": 0.0,
+            "total_reviews": 0,
+            "rating_distribution": {5: 0, 4: 0, 3: 0, 2: 0, 1: 0},
+            "reviews": []
+        }
+
+    total = len(reviews)
+    avg_rating = round(sum(r["rating"] for r in reviews) / total, 1)
+    dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0}
+    for r in reviews:
+        r_val = int(r["rating"])
+        if r_val in dist:
+            dist[r_val] += 1
+
+    return {
+        "book_id": book_id,
+        "average_rating": avg_rating,
+        "total_reviews": total,
+        "rating_distribution": dist,
+        "reviews": sorted(reviews, key=lambda x: x["timestamp"], reverse=True)
+    }
+
+@app.post("/api/books/{book_id}/reviews")
+async def post_book_review(book_id: int, req: ReviewRequest, background_tasks: BackgroundTasks):
+    """Submit a star rating and written review for a book."""
+    if req.rating < 1 or req.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5 stars.")
+    if not req.review_text.strip():
+        raise HTTPException(status_code=400, detail="Review text cannot be empty.")
+
+    details = recommender.get_book_details(book_id)
+    if not details:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    new_review = {
+        "review_id": f"rev_{book_id}_{req.user_id}_{int(time.time())}",
+        "user_id": req.user_id,
+        "user_name": req.user_name or "Anonymous Reader",
+        "avatar_color": req.avatar_color or "bg-blue-800",
+        "rating": req.rating,
+        "review_text": req.review_text.strip(),
+        "timestamp": time.time(),
+    }
+
+    if book_id not in REVIEWS_DB:
+        REVIEWS_DB[book_id] = []
+    
+    # Replace existing review by same user or append
+    existing_idx = next((i for i, r in enumerate(REVIEWS_DB[book_id]) if r["user_id"] == req.user_id), None)
+    if existing_idx is not None:
+        REVIEWS_DB[book_id][existing_idx] = new_review
+    else:
+        REVIEWS_DB[book_id].append(new_review)
+
+    # Broadcast activity feed event
+    book_title = details.get("title", "Unknown Book")
+    book_genre = details.get("genre", "")
+    background_tasks.add_task(
+        activity_manager.record,
+        user_id=req.user_id,
+        action="liked" if req.rating >= 4 else "disliked",
+        book_id=book_id,
+        book_title=book_title,
+        book_genre=book_genre,
+    )
+
+    reviews = REVIEWS_DB[book_id]
+    avg_rating = round(sum(r["rating"] for r in reviews) / len(reviews), 1)
+
+    return {
+        "status": "success",
+        "review": new_review,
+        "average_rating": avg_rating,
+        "total_reviews": len(reviews)
+    }
+
+@app.get("/api/users/{user_id}/analytics")
+async def get_user_analytics(user_id: int):
+    """
+    Returns aggregated analytics for a user: total reviews, favorite genres breakdown,
+    rating history, and recent activity log.
+    """
+    # Find all reviews written by user across all books
+    user_reviews = []
+    genre_counts = {}
+    
+    for book_id, r_list in REVIEWS_DB.items():
+        for rev in r_list:
+            if rev["user_id"] == user_id:
+                details = recommender.get_book_details(book_id) or {}
+                genre = details.get("genre", "Fiction")
+                genre_counts[genre] = genre_counts.get(genre, 0) + 1
+                user_reviews.append({
+                    **rev,
+                    "book_title": details.get("title", f"Book #{book_id}"),
+                    "book_image": details.get("image_url_s") or details.get("image_url", ""),
+                    "genre": genre,
+                })
+
+    # Also count genres from synthetic/recorded activities
+    recent_activities = activity_manager.get_recent(limit=50)
+    user_activities = [a for a in recent_activities if a.get("user_id") == user_id]
+
+    for act in user_activities:
+        g = act.get("book_genre", "Fiction")
+        if g:
+            genre_counts[g] = genre_counts.get(g, 0) + 1
+
+    total_reviews = len(user_reviews)
+    avg_given_rating = round(sum(r["rating"] for r in user_reviews) / total_reviews, 1) if total_reviews > 0 else 0.0
+
+    # Format genre distribution list
+    genres_formatted = [
+        {"genre": g, "count": c}
+        for g, c in sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    return {
+        "user_id": user_id,
+        "total_reviews": total_reviews,
+        "average_given_rating": avg_given_rating,
+        "genre_distribution": genres_formatted,
+        "user_reviews": sorted(user_reviews, key=lambda x: x["timestamp"], reverse=True),
+        "recent_activities": user_activities,
+    }
+

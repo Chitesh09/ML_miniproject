@@ -11,9 +11,12 @@ interface Book {
   [key: string]: any;
 }
 
-interface User {
+export interface User {
   user_id: number;
   name?: string;
+  email?: string;
+  avatar_color?: string;
+  preferred_genres?: string[];
 }
 
 interface UserPreferences {
