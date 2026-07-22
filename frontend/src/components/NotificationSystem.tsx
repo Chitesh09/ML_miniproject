@@ -64,7 +64,7 @@ export default function NotificationSystem() {
   }, [visible]);
 
   const dismiss = (id: string) => {
-    setDismissed(prev => new Set([...prev, id]));
+    setDismissed(prev => new Set(Array.from(prev).concat(id)));
     setTimeout(() => {
       setVisible(prev => prev.filter(n => n.id !== id));
       setDismissed(prev => { const s = new Set(prev); s.delete(id); return s; });

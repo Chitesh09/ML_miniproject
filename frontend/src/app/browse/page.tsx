@@ -251,9 +251,9 @@ export default function BrowsePage() {
     scoreFetchTimeout.current = setTimeout(() => {
       fetchRecommendations(false);
 
-      const candidateIds = [...new Set(
+      const candidateIds = Array.from(new Set(
         [...books, ...genreBooks].map(b => b?.book_id).filter(Boolean)
-      )];
+      ));
 
       if (candidateIds.length > 0) {
         fetch(`${API}/api/books/score`, {
